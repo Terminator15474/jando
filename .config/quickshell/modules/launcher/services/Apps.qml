@@ -1,26 +1,30 @@
 import QtQuick
-import QtQuick.Layouts
-import QtQuick.Controls
 import Quickshell
-import qs.components.colors
-import qs.components.icons
-import qs.components.states
 import qs.fuzzy
+import ".."
 
 Item {
 	id: root
 
 	property string searchString: ""
 
-	property int selectedIndex: 0 // for future arrow controls inside
-	property ScreenState screenState: ShellState.forMainScreen()
 	property var filteredApps: Searcher.go(root.searchString, DesktopEntries.applications.values, "name", 0.5)
 
-	implicitWidth: screenState.modelData.width * 0.2
-	implicitHeight: screenState.modelData.height * 0.4
+	readonly property int visibleItems: 7
 
-	function executeSelected(): bool {
-		const selected = filteredApps[selectedIndex]
+	anchors.fill: parent
+
+	implicitHeight: listView.height
+	implicitWidth: listView.width
+
+	function close() {
+		searchString = ""
+		listView.currentIndex = 0
+		listView.positionViewAtBeginning()
+	}
+
+	function executeSelected(): Launcher.Mode {
+		const selected = filteredApps[listView.currentIndex]
 		if (selected.runInTerminal) {
 			Quickshell.execDetached({
 					command: ['tmux', 'new-window', '-n', `${selected.name}`, `"${selected.command.join(" ")}"`],
@@ -30,43 +34,44 @@ Item {
 			selected.execute()
 		}
 
-		return true
+		return Launcher.Mode.Closed
 	}
 
-	ScrollView {
-		anchors.fill: parent
+	function next(): void {
+		listView.incrementCurrentIndex()
+		listView.positionViewAtIndex(listView.currentIndex, ListView.Center)
+	}
+
+	function previous(): void {
+		listView.decrementCurrentIndex()
+		listView.positionViewAtIndex(listView.currentIndex, ListView.Center)
+	}
+
+	ListView {
+		id: listView
+
+		// Test instance for layouting
+		AppItem {
+			id: testItem
+			visible: false
+			modelData: ({
+					name: "Sample name",
+					comment: "Sample comment"
+			})
+		}
+
+		width: testItem.implicitWidth
+		height: Math.min(count, visibleItems) * (testItem.implicitHeight + spacing)
+
 		clip: true
 
-		ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+		highlight: null
 
-		ColumnLayout  {
-			id: wrapper
-			width: parent.width
-			spacing: 4
+		spacing: 12
 
-			Repeater {
-				model: filteredApps
-				Rectangle {
-					id: itemBg
+		model: filteredApps
 
-					required property var modelData
-					required property int index
-
-					Layout.fillWidth: true
-					Layout.preferredHeight: 30
-
-					color: index === selectedIndex ? Colors.palette.accent : Colors.palette.surface
-					RowLayout {
-
-						Text {
-							id: appName
-							text: modelData.name
-							color: Colors.palette.fg
-							Layout.fillWidth: true
-						}
-					}
-				}
-			}
-		}
+		reuseItems: true
+		delegate: AppItem{}
 	}
 }

@@ -4,7 +4,7 @@ config.automatically_reload_config = true
 
 --config.color_scheme = "Tokyo Night Moon"
 
-config.default_prog = { 'tmux' }
+config.default_prog = { 'tmux', 'new-session', '-A' }
 
 config.window_background_opacity = 0.6
 
